@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "strava-importer-api"
+description = "strava-importer-api"
+authors = ["nimiq <puntonim@gmail.com>"]
+license = "no license"
+
+# Do not edit `version` directly or with `poetry version`, but instead run: `$ make version-bump/1.0.0`.
+# This is so we can write the version in __version__.py which is always included in
+#  the wheel after a poetry build (unlike pyproject.toml).
+version = "0.1.0"
+
+[tool.poetry.dependencies]
+python = "^3.11"  # Latest AWS Lambda Python runtime.
+requests = "^2.31.0"
+
+[tool.poetry.dev-dependencies]
+boto3 = "1.27.1"  # Must be the same as in AWS Lambda Python runtime: https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html.
+botocore = "1.30.1"  # Must be the same as in AWS Lambda Python runtime: https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html.
+black = "23.7.0"  # Must be the same as in `.pre-commit-config.yaml`.
+isort = "5.12.0"  # Must be the same as in `.pre-commit-config.yaml`.
+pytest = "^7.4.0"
+pytest-xdist = {extras = ["psutil"], version = "^3.3.1"}
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]  # See: https://black.readthedocs.io/en/stable/pyproject_toml.html
+line-length = 88  # Default.
+# skip-string-normalization = true  # Only for old projects.
+target-version = ["py311"]
+include = '\.py?$'
+extend-exclude = '''  # It automatically excludes all files in .gitignore by default.
+/(
+    \.git
+  # Project-specific:
+  | docs
+)/
+'''
+
+[tool.isort]
+profile = "black"  # See: https://black.readthedocs.io/en/stable/guides/using_black_with_other_tools.html#profile
+skip_gitignore = true  # Skip all files in .gitignore.

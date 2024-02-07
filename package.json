@@ -1,0 +1,10 @@
+{
+  "name": "strava-importer-api",
+  "description": "",
+  "version": "0.1.0",
+  "devDependencies": {
+    "serverless": "3.34.0",
+    "serverless-iam-roles-per-function": "^3.2.0",
+    "serverless-python-requirements": "^6.0.0"
+  }
+}
