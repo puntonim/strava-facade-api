@@ -1,47 +1,46 @@
-from typing import Optional, Union
+from pathlib import Path
 
 import requests
 
+from strava_importer_api import domain_exceptions as exceptions
+from strava_importer_api.clients.strava_client.strava_client import StravaClient
+from strava_importer_api.clients.strava_client.token_manager import (
+    TokenManager,
+    TokenManagerException,
+)
 
-class StravaClient:
-    def __init__(self, access_token: str) -> None:
-        self.access_token = access_token
+CURR_DIR = Path(__file__).parent
 
-    def list_activities(
-        self,
-        after_ts: int | float | None = None,
-        before_ts: int | float | None = None,
-        activity_type: str | None = None,
-        n_results_per_page: int | None = None,
-    ) -> list[Optional[dict]]:
-        """
-        List all my activities and filter by date, as supported by Strava API.
-        Also, filter by activity_type, but this is just a Python filtering (NOT supported by Strava API).
 
-        Docs:
-            - Authentication: https://developers.strava.com/docs/authentication/
-            - List Athlete Activities API: https://developers.strava.com/docs/reference/#api-Activities-getLoggedInAthleteActivities
-        """
-        print(f"Listing my activities...")
-        url = "https://www.strava.com/api/v3/athlete/activities"
-        headers = {"Authorization": f"Bearer {self.access_token}"}
-        payload = {}
-        if before_ts:
-            payload["before"] = int(before_ts)
-        if after_ts:
-            payload["after"] = int(after_ts)
-        if n_results_per_page:
-            payload["per_page"] = n_results_per_page
-        response = requests.get(url, headers=headers, params=payload)
-        response.raise_for_status()
+def main():
+    # Get an access token.
+    try:
+        access_token = TokenManager.get_access_token()
+    except TokenManagerException as exc:
+        raise exceptions.StravaAuthenticationError(str(exc)) from exc
+    try:
+        strava = StravaClient(access_token)
+    except requests.HTTPError as exc:
+        raise exceptions.StravaApiError(str(exc)) from exc
 
-        data = response.json()
-        if activity_type:
-            data = []
-            for activity in response.json():
-                if activity.get("type") == activity_type:
-                    data.append(activity)
-        # A single `activity` is a dict like:
+    data = list()
+
+    # Get all activities of the given type for the given day.
+    after_ts = 1704063600  # 2024-01-02 00:00:00 UTC.
+    # after_ts = 1707174000
+    # before_ts = 1707260399
+    # activity_type = "WeightTraining"
+    activities = strava.list_activities(after_ts, n_results_per_page=200)
+    if not activities:
+        raise exceptions.NoActivityFound
+
+    for i, activity in enumerate(activities):
+        if i > 70:
+            # Rate limits: 100 requests every 15 minutes
+            # https://developers.strava.com/docs/rate-limits/
+            break
+
+        # `activity` is a dict like:
         # {
         #     "resource_state": 2,
         #     "athlete": {
@@ -100,23 +99,8 @@ class StravaClient:
         #     "total_photo_count": 0,
         #     "has_kudoed": false
         # }
-        return data
-
-    def get_activity_details(self, activity_id: int) -> dict:
-        """
-        Get details for the given activity id.
-
-        Docs:
-            - Authentication: https://developers.strava.com/docs/authentication/
-            - Get Activity API: https://developers.strava.com/docs/reference/#api-Activities-getActivityById
-        """
-        print(f"Getting activity details for id={activity_id}...")
-        url = f"https://www.strava.com/api/v3/activities/{activity_id}"
-        headers = {"Authorization": f"Bearer {self.access_token}"}
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        details = response.json()
-        # `details` is a dict like:
+        activity_details = strava.get_activity_details(activity["id"])
+        # `activity_details` is a dict like:
         # {
         #     "resource_state": 3,
         #     "athlete": {
@@ -243,19 +227,45 @@ class StravaClient:
         #     "private_note": "",
         #     "available_zones": []
         # }
-        return details
 
-    def update_activity(self, activity_id: int, data: dict) -> int:
-        """
-        Update an activity by its id.
+        # print(activity["id"], activity_details["description"])
 
-        Docs:
-            - Authentication: https://developers.strava.com/docs/authentication/
-            - Update Activity API: https://developers.strava.com/docs/reference/#api-Activities-updateActivityById
-        """
-        print(f"Updating activity id={activity_id}...")
-        url = f"https://www.strava.com/api/v3/activities/{activity_id}"
-        headers = {"Authorization": f"Bearer {self.access_token}"}
-        response = requests.put(url, headers=headers, data=data)
-        response.raise_for_status()
-        return response.json()
+        data.append(
+            [
+                activity.get("start_date_local") or activity.get("start_date"),
+                activity["type"],
+                activity["name"],
+                activity["moving_time"],
+                activity["distance"],
+                activity["total_elevation_gain"],
+                activity_details["description"],
+            ]
+        )
+
+    with open(CURR_DIR / "activities.csv", "a") as fout:
+        fout.write(
+            "date\t"
+            + "type\t"
+            + "name\t"
+            + "moving_time_hours\t"
+            + "distance_km\t"
+            + "elevation_m\t"
+            + "descr\n"
+        )
+        for datum in data:
+            moving_time_hours = round(datum[3] / 3600, 2)
+            distance = round(datum[4] / 1000, 1)
+
+            fout.write(
+                f"`{datum[0]}`\t"
+                + f"`{datum[1]}`\t"
+                + f"`{datum[2]}`\t"
+                + f"`{moving_time_hours}H`\t"
+                + f"`{distance}km`\t"
+                + f"`{datum[5]}m`\t"
+                + f"`{datum[6]}`\n"
+            )
+
+
+if __name__ == "__main__":
+    main()
