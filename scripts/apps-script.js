@@ -76,7 +76,7 @@ function updateStravaDescription() {
   const selection = SpreadsheetApp.getActiveSpreadsheet().getSelection();
   const activeRange = selection.getActiveRange();
 
-  // Ensure the selected range "looks" valid.
+  // Ensure the selected range "seems" valid.
   if (activeRange.getHeight() != 4) {
     _showAlert("The selected range does not seem a valid session log: height != 4");
     return;
@@ -86,14 +86,21 @@ function updateStravaDescription() {
     return;
   }
 
-  // Parse data.
+  // Parse data: date.
   const date = activeRange.getCell(1, 1).getValue();
   if (!(date instanceof Date)) {
     _showAlert("Not a valid date: " + date);
     return;
   }
+  
+  // Parse data: title.
   const title = activeRange.getCell(1, 2).getValue();
   const name = "Weight training: " + title[0].toLowerCase() + title.slice(1);
+
+  // Parse data: optional note.
+  const note = activeRange.getCell(1, 4).getValue() || null;
+  
+  // Parse data: exercises.
   let exercises = [];
   for (let col = 1; col <= activeRange.getWidth(); col++) {
     const name = activeRange.getCell(2, col).getValue();
@@ -114,7 +121,9 @@ function updateStravaDescription() {
   for (let exercise of exercises) {
     description += exercise.name + ": " + exercise.reps + " reps x " + exercise.sets + " sets\n"
   }
-  _showAlert(header + "\n\n" + name + "\n\n" + description);
+  if (note) description += "\n\nNote: " + note.substring(0, 1).toLowerCase() + note.substring(1);
+  let alert = header + "\n\n" + name + "\n\n" + description;
+  _showAlert(alert);
 
   let hasDescriptionAlready = false;
 
