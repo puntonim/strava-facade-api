@@ -1,13 +1,23 @@
-**Strava Importer API**
+**Strava Facade API**
 =======================
 
-The goal of this API is to let me interact with my own Strava data.
-So far the only user case is the following:
+This API serves as a facade to simplify the interaction with Strava API.
+
+So far there are 2 similar use cases.
+
+Use case #1: update Strava activity description
+-----------------------------------------------
 - I keep a Google Sheet with the workout that I am doing;
 - and I use my Garmin watch to monitor time and reps;
 - at the end of the workout my Garmin watch creates the new Weight Training activity in Strava;
 - and finally in Google Sheet I press a button and it updates the new Strava activity
    with all details (name of exercises with their # reps, # sets, weight, ...).
+
+Use case #2: create new Strava activity
+---------------------------------------
+- When I attend a calisthenics class at YouReborn I add an entry to the Google Sheet;
+- and then in Google Sheet I press a button and it creates a  new Strava activity
+   with details (time of start, duration, note).
 
 The Google Sheets uses Apps Script to read data from the sheet and to make an HTTP
  request to the AWS Lambda where this project is deployed.
@@ -167,12 +177,12 @@ Development setup
 1 - System requirements
 ----------------------
 
-**Python 3.11**\
-The target Python 3.11 as it is the latest available environment at AWS Lambda.\
+**Python 3.12**\
+The target Python 3.12 as it is the latest available environment at AWS Lambda.\
 Install it with pyenv:
 ```sh
 $ pyenv install -l  # List all available versions.
-$ pyenv install 3.11.3
+$ pyenv install 3.12.4
 ```
 
 **Poetry**\
@@ -203,12 +213,12 @@ $ poetry shell
 Without using Makefile the full process is:
 ```sh
 # Activate the Python version for the current project:
-$ pyenv local 3.11.3  # It creates `.python-version`, to be git-ignored.
+$ pyenv local 3.12.4  # It creates `.python-version`, to be git-ignored.
 $ pyenv which python
-~/.pyenv/versions/3.11.3/bin/python
+~/.pyenv/versions/3.12.4/bin/python
 
 # Now create a venv with poetry:
-$ poetry env use ~/.pyenv/versions/3.11.3/bin/python
+$ poetry env use ~/.pyenv/versions/3.12.4/bin/python
 # Now you can open a shell and/or install:
 $ poetry shell
 # And finally, install all requirements:
@@ -242,8 +252,10 @@ Note that you can create only 1 app.\
 Go to: [https://www.strava.com/settings/api]()
 and create a new API.\
 Take note of the `client_id` and `client_secret`.\
-The importer will guide you to get a valid access token.\
-Also note that the access token in that page ("Your Access Token") is NOT what you need here because it has a read-only scope.\
+The script `scripts/configure_parameter_store.py` that you will run in a later step
+ will guide you to get a valid access token.\
+Also note that the access token in that page ("Your Access Token") is NOT what you need
+ here because it has a read-only scope.\
 See screenshot:
 ![Strava app](docs/img/3.png "Strava app")
 

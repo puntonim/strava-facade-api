@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "strava-importer-api"
-description = "strava-importer-api"
+name = "strava-facade-api"
+description = "strava-facade-api"
 authors = ["nimiq <puntonim@gmail.com>"]
 license = "no license"
 
@@ -10,7 +10,7 @@ license = "no license"
 version = "0.1.0"
 
 [tool.poetry.dependencies]
-python = "^3.11"  # Latest AWS Lambda Python runtime.
+python = "^3.12"  # Latest AWS Lambda Python runtime.
 requests = "^2.31.0"
 
 [tool.poetry.dev-dependencies]
@@ -28,7 +28,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.black]  # See: https://black.readthedocs.io/en/stable/pyproject_toml.html
 line-length = 88  # Default.
 # skip-string-normalization = true  # Only for old projects.
-target-version = ["py311"]
+target-version = ["py312"]
 include = '\.py?$'
 extend-exclude = '''  # It automatically excludes all files in .gitignore by default.
 /(

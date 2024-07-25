@@ -1,5 +1,5 @@
-PYTHON_VERSION:="3.11.3"
-SRC_DIR:="strava_importer_api"
+PYTHON_VERSION:="3.12.4"
+SRC_DIR:="strava_facade_api"
 
 .PHONY: default
 default: test ;

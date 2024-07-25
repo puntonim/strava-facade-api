@@ -4,7 +4,7 @@
 #  - IAM: https://www.serverless.com/framework/docs/providers/aws/guide/iam
 #  - IAM Roles Per Function: https://www.serverless.com/plugins/serverless-iam-roles-per-function
 
-service: strava-importer-api
+service: strava-facade-api
 
 
 frameworkVersion: "3"
@@ -12,7 +12,7 @@ frameworkVersion: "3"
 
 provider:
   name: aws
-  runtime: python3.11
+  runtime: python3.12
   region: eu-south-1
   stage: production # Default stage to be used. If omitted the default is `dev`. Override with `sls deploy --stage production`.
   memorySize: 256 # Default is 1024.
@@ -23,7 +23,7 @@ provider:
     # Note: it's better to store all secrets here rather than nested under `functions:`
     #  so they are available to all Lambdas and to the `/settings` introspection endpoint.
     # Some are from ssm Parameter Store: https://www.serverless.com/framework/docs/providers/aws/guide/variables#reference-variables-using-the-ssm-parameter-store
-    API_AUTHORIZER_TOKEN: ${env:API_AUTHORIZER_TOKEN, ssm:/strava-importer-api/${opt:stage, self:provider.stage}/api-authorizer-token, ssm:/strava-importer-api/production/api-authorizer-token, 'XXX'}
+    API_AUTHORIZER_TOKEN: ${env:API_AUTHORIZER_TOKEN, ssm:/strava-facade-api/${opt:stage, self:provider.stage}/api-authorizer-token, ssm:/strava-facade-api/production/api-authorizer-token, 'XXX'}
   httpApi:
     authorizers:
       tokenAuthorizer:
@@ -52,13 +52,13 @@ provider:
 
 functions:
   authorizer:
-    handler: strava_importer_api.views.authorizer_view.lambda_handler
+    handler: strava_facade_api.views.authorizer_view.lambda_handler
     memorySize: 128
     timeout: 28 # Note: API Gateway current maximum is 29 seconds.
     iamRoleStatements: []
 
   endpoint-introspection:
-    handler: strava_importer_api.views.introspection_view.lambda_handler
+    handler: strava_facade_api.views.introspection_view.lambda_handler
     timeout: 5 # Note: API Gateway current maximum is 29 seconds.
     maximumRetryAttempts: 0
     events:
@@ -74,7 +74,7 @@ functions:
     iamRoleStatements: []
 
   endpoint-upd-activity-desc:
-    handler: strava_importer_api.views.update_activity_description_view.lambda_handler
+    handler: strava_facade_api.views.update_activity_description_view.lambda_handler
     timeout: 29 # Note: API Gateway current maximum is 29 seconds.
     maximumRetryAttempts: 0
     events:
@@ -84,14 +84,14 @@ functions:
           authorizer:
             name: tokenAuthorizer
     # Custom name because the auto generated one is too long.
-    iamRoleStatementsName: strava-importer-api-prod-upd-activity-desc-eu-south-1-lambdaRole
+    iamRoleStatementsName: strava-facade-api-prod-upd-activity-desc-eu-south-1-lambdaRole
     iamRoleStatements:
       - Effect: Allow
         Action:
           - ssm:GetParameter
           - ssm:PutParameter
         Resource:
-          - arn:aws:ssm:eu-south-1:477353422995:parameter/strava-importer-api/${sls:stage}/*
+          - arn:aws:ssm:eu-south-1:477353422995:parameter/strava-facade-api/${sls:stage}/*
 
 package:
   # Individually should only be used for a project with multiple modules each with their own specific dependencies.
@@ -99,7 +99,7 @@ package:
   individually: false
   patterns: # Specify the directories and files which should be included in the deployment package. Order matters.
     - "!**"
-    - strava_importer_api/**
+    - strava_facade_api/**
     - "!**/__pycache__/**"
     - pyproject.toml
     - serverless.yml
@@ -112,7 +112,7 @@ plugins:
 
 custom:
   # Constants.
-  source: https://github.com/puntonim/strava-importer-api/blob/main/serverless.yml
+  source: https://github.com/puntonim/strava-facade-api/blob/main/serverless.yml
 
   # Plugin: serverless-python-requirements.
   pythonRequirements:

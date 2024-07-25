@@ -6,9 +6,9 @@ import requests
 
 from ..aws_parameter_store_client.aws_parameter_store_client import ParameterStoreClient
 
-TOKEN_PARAMETER_STORE_KEY_PATH = "/strava-importer-api/production/token"
-CLIENT_ID_PARAMETER_STORE_KEY_PATH = "/strava-importer-api/production/client-id"
-CLIENT_SECRET_PARAMETER_STORE_KEY_PATH = "/strava-importer-api/production/client-secret"
+TOKEN_PARAMETER_STORE_KEY_PATH = "/strava-facade-api/production/token"
+CLIENT_ID_PARAMETER_STORE_KEY_PATH = "/strava-facade-api/production/client-id"
+CLIENT_SECRET_PARAMETER_STORE_KEY_PATH = "/strava-facade-api/production/client-secret"
 
 
 class TokenManager:

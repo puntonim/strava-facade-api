@@ -9,6 +9,6 @@ repos:
     rev: 23.7.0  # Must be the same as in `pyproject.toml`.
     hooks:
       - id: black
-        language_version: python3.11
+        language_version: python3.12
         files: '^(a-z0-9_-)+/src/'
         types: [file, python]

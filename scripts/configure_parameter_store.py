@@ -9,10 +9,10 @@ import sys
 
 import requests
 
-from strava_importer_api.clients.aws_parameter_store_client.aws_parameter_store_client import (
+from strava_facade_api.clients.aws_parameter_store_client.aws_parameter_store_client import (
     ParameterStoreClient,
 )
-from strava_importer_api.clients.strava_client.token_manager import (
+from strava_facade_api.clients.strava_client.token_manager import (
     CLIENT_ID_PARAMETER_STORE_KEY_PATH,
     CLIENT_SECRET_PARAMETER_STORE_KEY_PATH,
     TOKEN_PARAMETER_STORE_KEY_PATH,
@@ -31,7 +31,7 @@ def main():
         sys.exit(1)
     api_authorizer_secret = data.strip()
     ssm_client.put_secret(
-        "/strava-importer-api/production/api-authorizer-token", api_authorizer_secret
+        "/strava-facade-api/production/api-authorizer-token", api_authorizer_secret
     )
 
     # Prompt the user for the client_id.

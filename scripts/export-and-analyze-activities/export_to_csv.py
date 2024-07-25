@@ -2,9 +2,9 @@ from pathlib import Path
 
 import requests
 
-from strava_importer_api import domain_exceptions as exceptions
-from strava_importer_api.clients.strava_client.strava_client import StravaClient
-from strava_importer_api.clients.strava_client.token_manager import (
+from strava_facade_api import domain_exceptions as exceptions
+from strava_facade_api.clients.strava_client.strava_client import StravaClient
+from strava_facade_api.clients.strava_client.token_manager import (
     TokenManager,
     TokenManagerException,
 )

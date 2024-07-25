@@ -1,5 +1,5 @@
 {
-  "name": "strava-importer-api",
+  "name": "strava-facade-api",
   "description": "",
   "version": "0.1.0",
   "devDependencies": {
