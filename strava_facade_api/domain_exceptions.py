@@ -18,3 +18,18 @@ class StravaAuthenticationError(BaseDomainException):
 
 class StravaApiError(BaseDomainException):
     pass
+
+
+class InvalidDatetimeInput(BaseDomainException):
+    def __init__(self, value):
+        self.value = value
+
+
+class NaiveDatetimeInput(BaseDomainException):
+    def __init__(self, value):
+        self.value = value
+
+
+class PossibleDuplicatedActivityFound(BaseDomainException):
+    def __init__(self, activity_id: str | None = None):
+        self.activity_id = activity_id

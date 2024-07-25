@@ -1,6 +1,9 @@
-from typing import Optional, Union
+from datetime import datetime, timedelta
+from typing import Optional
 
 import requests
+
+from ...utils import datetime_utils
 
 
 class StravaClient:
@@ -259,3 +262,157 @@ class StravaClient:
         response = requests.put(url, headers=headers, data=data)
         response.raise_for_status()
         return response.json()
+
+    def create_activity(
+        self,
+        name: str,
+        sport_type: str,
+        start_date: datetime | str,
+        duration_seconds: int,  # Seconds.
+        description: str | None,
+        do_detect_duplicates=False,
+    ):
+        """
+        Create a new activity.
+        It also tries to make sure that this new activity is not a duplicate.
+
+        Docs:
+            - Authentication: https://developers.strava.com/docs/authentication/
+            - Create Activity API: https://developers.strava.com/docs/reference/#api-Activities-createActivity
+        """
+        print(f"Creating new activity...")
+
+        # Parse start_date.
+        if isinstance(start_date, str):
+            try:
+                start_date = datetime.fromisoformat(start_date)
+            except ValueError as exc:
+                raise InvalidDatetime(start_date) from exc
+
+        if isinstance(start_date, datetime):
+            if datetime_utils.is_naive(start_date):
+                raise NaiveDatetime(start_date)
+        else:
+            raise InvalidDatetime(start_date)
+        start_date_local = start_date.isoformat()
+
+        # Try to detect if there is already a duplicate, so an existing activity
+        #  of the same type within 1 hour and 15 mins.
+        if do_detect_duplicates:
+            after_ts = (start_date - timedelta(hours=1, minutes=15)).timestamp()
+            before_ts = (start_date + timedelta(hours=1, minutes=15)).timestamp()
+            activities = self.list_activities(after_ts, before_ts, sport_type)
+            if activities:
+                print(f"Found possible duplicate: {activities[0]['id']}")
+                raise PossibleDuplicatedActivity(activities[0]["id"])
+
+        url = f"https://www.strava.com/api/v3/activities"
+        headers = {"Authorization": f"Bearer {self.access_token}"}
+        data = dict(
+            name=name,
+            sport_type=sport_type,
+            start_date_local=start_date_local,
+            elapsed_time=duration_seconds,
+        )
+        if description:
+            data["description"] = description
+        response = requests.post(url, headers=headers, data=data)
+
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as exc:
+            if (
+                response.status_code == 409
+                and "conflict for url" in exc.args[0].lower()
+            ):
+                raise PossibleDuplicatedActivity from exc
+            raise
+
+        details = response.json()
+        # `details` is a dict like:
+        # {
+        #     "resource_state": 3,
+        #     "athlete": {"id": 115890775, "resource_state": 1},
+        #     "name": "Test1 Paolo",
+        #     "distance": 0.0,
+        #     "moving_time": 3605,
+        #     "elapsed_time": 3605,
+        #     "total_elevation_gain": 0,
+        #     "type": "WeightTraining",
+        #     "sport_type": "WeightTraining",
+        #     "id": 11977678435,
+        #     "start_date": "2024-07-25T13:39:55Z",
+        #     "start_date_local": "2024-07-25T15:39:55Z",
+        #     "timezone": "(GMT+01:00) Europe/Rome",
+        #     "utc_offset": 7200.0,
+        #     "location_city": None,
+        #     "location_state": None,
+        #     "location_country": "Italy",
+        #     "achievement_count": 0,
+        #     "kudos_count": 0,
+        #     "comment_count": 0,
+        #     "athlete_count": 1,
+        #     "photo_count": 0,
+        #     "map": {
+        #         "id": "a11977678435",
+        #         "polyline": "",
+        #         "resource_state": 3,
+        #         "summary_polyline": "",
+        #     },
+        #     "trainer": False,
+        #     "commute": False,
+        #     "manual": True,
+        #     "private": False,
+        #     "visibility": "followers_only",
+        #     "flagged": False,
+        #     "gear_id": None,
+        #     "start_latlng": [],
+        #     "end_latlng": [],
+        #     "average_speed": 0.0,
+        #     "max_speed": 0,
+        #     "has_heartrate": False,
+        #     "heartrate_opt_out": False,
+        #     "display_hide_heartrate_option": False,
+        #     "upload_id": None,
+        #     "external_id": None,
+        #     "from_accepted_tag": False,
+        #     "pr_count": 0,
+        #     "total_photo_count": 0,
+        #     "has_kudoed": False,
+        #     "description": "test from Python",
+        #     "calories": 0,
+        #     "perceived_exertion": None,
+        #     "prefer_perceived_exertion": None,
+        #     "segment_efforts": [],
+        #     "photos": {"primary": None, "count": 0},
+        #     "stats_visibility": [
+        #         {"type": "heart_rate", "visibility": "everyone"},
+        #         {"type": "pace", "visibility": "everyone"},
+        #         {"type": "power", "visibility": "everyone"},
+        #         {"type": "speed", "visibility": "everyone"},
+        #         {"type": "calories", "visibility": "everyone"},
+        #     ],
+        #     "hide_from_home": False,
+        #     "embed_token": "175fc05106f4e824cdc261524af5a9320fe7b0de",
+        #     "available_zones": [],
+        # }
+        return details
+
+
+class BaseStravaClientException(Exception):
+    pass
+
+
+class InvalidDatetime(BaseStravaClientException):
+    def __init__(self, value):
+        self.value = value
+
+
+class NaiveDatetime(BaseStravaClientException):
+    def __init__(self, value):
+        self.value = value
+
+
+class PossibleDuplicatedActivity(BaseStravaClientException):
+    def __init__(self, activity_id: str | None = None):
+        self.activity_id = activity_id

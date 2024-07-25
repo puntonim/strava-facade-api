@@ -93,6 +93,24 @@ functions:
         Resource:
           - arn:aws:ssm:eu-south-1:477353422995:parameter/strava-facade-api/${sls:stage}/*
 
+  endpoint-create-activity:
+    handler: strava_facade_api.views.create_activity_view.lambda_handler
+    timeout: 29 # Note: API Gateway current maximum is 29 seconds.
+    maximumRetryAttempts: 0
+    events:
+      - httpApi:
+          path: /create-activity
+          method: POST
+          authorizer:
+            name: tokenAuthorizer
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - ssm:GetParameter
+          - ssm:PutParameter
+        Resource:
+          - arn:aws:ssm:eu-south-1:477353422995:parameter/strava-facade-api/${sls:stage}/*
+
 package:
   # Individually should only be used for a project with multiple modules each with their own specific dependencies.
   #  Docs: https://www.serverless.com/plugins/serverless-python-requirements#per-function-requirements

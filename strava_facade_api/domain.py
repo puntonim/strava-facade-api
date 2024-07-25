@@ -1,9 +1,15 @@
+from datetime import datetime
 from typing import Optional, Union
 
 import requests
 
 from . import domain_exceptions as exceptions
-from .clients.strava_client.strava_client import StravaClient
+from .clients.strava_client.strava_client import (
+    InvalidDatetime,
+    NaiveDatetime,
+    PossibleDuplicatedActivity,
+    StravaClient,
+)
 from .clients.strava_client.token_manager import TokenManager, TokenManagerException
 
 
@@ -61,3 +67,50 @@ def update_activity_description(
         data["name"] = name
     updated_activity = strava.update_activity(latest_activity["id"], data)
     return updated_activity
+
+
+def create_activity(
+    name: str,
+    activity_type: str,
+    start_date: datetime | str,
+    duration_seconds: int,
+    description: str | None,
+):
+    """
+    Create a new activity.
+    It also tries to make sure that this new activity is not a duplicate.
+
+    Args:
+        name: the name (or title) of the new activity.
+        activity_type: eg. "WeightTraining".
+        start_date: non-naive.
+        duration_seconds: in seconds.
+        description: optional.
+    """
+    # Get an access token.
+    try:
+        access_token = TokenManager.get_access_token()
+    except TokenManagerException as exc:
+        raise exceptions.StravaAuthenticationError(str(exc)) from exc
+    try:
+        strava = StravaClient(access_token)
+    except requests.HTTPError as exc:
+        raise exceptions.StravaApiError(str(exc)) from exc
+
+    try:
+        activity = strava.create_activity(
+            name,
+            activity_type,
+            start_date,
+            duration_seconds,
+            description,
+            do_detect_duplicates=True,
+        )
+    except InvalidDatetime as exc:
+        raise exceptions.InvalidDatetimeInput(exc.value) from exc
+    except NaiveDatetime as exc:
+        raise exceptions.NaiveDatetimeInput(exc.value) from exc
+    except PossibleDuplicatedActivity as exc:
+        raise exceptions.PossibleDuplicatedActivityFound(exc.activity_id) from exc
+
+    return activity
