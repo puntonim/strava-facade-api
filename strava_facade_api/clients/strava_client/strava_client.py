@@ -24,6 +24,72 @@ class StravaClient:
         Docs:
             - Authentication: https://developers.strava.com/docs/authentication/
             - List Athlete Activities API: https://developers.strava.com/docs/reference/#api-Activities-getLoggedInAthleteActivities
+
+        Example:
+            $ curl "https://www.strava.com/api/v3/athlete/activities?after=1718834400&before=1718920799" \
+             -H "Authorization: Bearer XXX"
+
+            [
+              {
+                "resource_state": 2,
+                "athlete": {
+                  "id": 115890775,
+                  "resource_state": 1
+                },
+                "name": "Weight training: chest, triceps, shoulders",
+                "distance": 0.0,
+                "moving_time": 2902,
+                "elapsed_time": 2902,
+                "total_elevation_gain": 0,
+                "type": "WeightTraining",
+                "sport_type": "WeightTraining",
+                "id": 11699080053,
+                "start_date": "2024-06-20T16:53:19Z",
+                "start_date_local": "2024-06-20T18:53:19Z",
+                "timezone": "(GMT+02:00) Africa/Blantyre",
+                "utc_offset": 7200.0,
+                "location_city": null,
+                "location_state": null,
+                "location_country": "Italy",
+                "achievement_count": 0,
+                "kudos_count": 1,
+                "comment_count": 0,
+                "athlete_count": 1,
+                "photo_count": 0,
+                "map": {
+                  "id": "a11699080053",
+                  "summary_polyline": "",
+                  "resource_state": 2
+                },
+                "trainer": true,
+                "commute": false,
+                "manual": false,
+                "private": false,
+                "visibility": "followers_only",
+                "flagged": false,
+                "gear_id": null,
+                "start_latlng": [],
+                "end_latlng": [],
+                "average_speed": 0.0,
+                "max_speed": 0.0,
+                "average_temp": 32,
+                "has_heartrate": true,
+                "average_heartrate": 70.7,
+                "max_heartrate": 121.0,
+                "heartrate_opt_out": false,
+                "display_hide_heartrate_option": true,
+                "elev_high": 0.0,
+                "elev_low": 0.0,
+                "upload_id": 12481876918,
+                "upload_id_str": "12481876918",
+                "external_id": "garmin_ping_349214871994",
+                "from_accepted_tag": false,
+                "pr_count": 0,
+                "total_photo_count": 0,
+                "has_kudoed": false
+              }
+            ]
+
         """
         print(f"Listing my activities...")
         url = "https://www.strava.com/api/v3/athlete/activities"
@@ -42,7 +108,10 @@ class StravaClient:
         if activity_type:
             data = []
             for activity in response.json():
-                if activity.get("type") == activity_type:
+                if (
+                    activity.get("type") == activity_type
+                    or activity.get("sport_type") == activity_type
+                ):
                     data.append(activity)
         # A single `activity` is a dict like:
         # {
