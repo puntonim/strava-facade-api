@@ -3,6 +3,9 @@ class NotADate extends BaseError { }
 class ActivityAlreadyHasDescription extends BaseError { }
 class ActivityNotFound extends BaseError { }
 class ResponseError extends BaseError { }
+class FormatError extends BaseError { }
+class InvalidHour extends BaseError { }
+class InvalidMinute extends BaseError { }
 
 
 class UpdateStravaButton {
@@ -28,7 +31,7 @@ class UpdateStravaButton {
     }
 
     // Parse data.
-    const [dayStartTs, dayEndTs] = this._parseDate();
+    const [dayStartTs, dayEndTs, originalDate] = this._parseDate();
     const name = this._parseTitle();
     const note = this._parseNote();
     // Detect if it is a regular session log or a calisthenics session at YouReborn.
@@ -36,14 +39,27 @@ class UpdateStravaButton {
     const exercises = this._parseExercises();
 
     if (this.isCalisthenicsCourse) { // It's a calisthenics course session at YouReborn.
-      const [startTime, duration] = this._askStartTimeAndDuration();
-      // TODO NOW INVOKE THE NEW LAMBDA (YET TO BE CREATED) IN ORDER TO CREATE THE NEW ACTIVITY
-      showAlert("CALIIIIII - TO BE IMPLEMENTED " + startTime + " " + duration)
+      const [startHour, startMin, durationHour, durationMin] = this._askStartTimeAndDuration();
+
+      // Eg. "2024-07-25T18:17:33.983+02:00".
+      const startDateString = this._formatStartDateString(originalDate, startHour, startMin);
+
+      // Send an alert message for "logging" purpose.
+      const description = this._sendCreateAlertMessage(startDateString, durationHour, durationMin, name, note);
+
+      // And create the new Strava activity.
+      this._createStravaActivity(startDateString, durationHour, durationMin, description, name);
+  //         $ curl -X POST https://q0adsu470c.execute-api.eu-south-1.amazonaws.com/create-activity \
+  //       -H 'Authorization: XXX' \
+  //       -d '{"name": "test1", "activityType": "WeightTraining", "startDate": "2024-07-25T18:17:33.983+02:00", "durationSeconds": 3960, "description": "My new descr"}'
+
+
+
     } else { // It's a regular gym session.
       // Send an alert message for "logging" purpose.
-      const description = this._sendAlertMessage(dayStartTs, dayEndTs, name, exercises, note);
+      const description = this._sendUpdateAlertMessage(dayStartTs, dayEndTs, name, exercises, note);
       // And update the description of the existing Strava activity.
-      this._updateStravaActivityDescription(dayStartTs, dayEndTs, description, name)
+      this._updateStravaActivityDescription(dayStartTs, dayEndTs, description, name);
     }
   }
 
@@ -71,14 +87,21 @@ class UpdateStravaButton {
 
   _parseDate() {
     // Parse data: date.
-    const date = this.activeRange.getCell(1, 1).getValue();
-    if (!(date instanceof Date)) {
-      showAlert("Not a valid date: " + date);
+    const originalDate = this.activeRange.getCell(1, 1).getValue();
+    if (!(originalDate instanceof Date)) {
+      showAlert("Not a valid date: " + originalDate);
       throw new NotADate();
     }
-    const dayStartTs = Math.round(date / 1000);
+    const dayStartTs = Math.round(originalDate / 1000);
     const dayEndTs = dayStartTs + 24 * 60 * 60 - 1;
-    return [dayStartTs, dayEndTs];
+    return [dayStartTs, dayEndTs, originalDate];
+  }
+
+  _formatStartDateString(originalDate, startHour, startMin) {
+    // Return a string like: "2024-07-25T18:17:33.983+02:00".
+    const startDate = originalDate;
+    startDate.setHours(startHour, startMin);
+    return dateToIsoString(startDate);
   }
 
   _parseTitle() {
@@ -130,16 +153,30 @@ class UpdateStravaButton {
     }
   }
 
-  _sendAlertMessage(dayStartTs, dayEndTs, name, exercises, note) {
+  _sendUpdateAlertMessage(dayStartTs, dayEndTs, name, exercises, note) {
     /**
-     * // Send an alert message for "logging" purpose.
+     * Send an alert message for "logging" purpose
+     *  about the update of an existing Strava activity.
      */
-    const header = "Timestamps: " + dayStartTs + " - " + dayEndTs;
+    const header = "UPDATE ACTIVITY DESCTIPTION\n\nTimestamps: " + dayStartTs + " - " + dayEndTs;
     let description = "";
     for (let exercise of exercises) {
       description += exercise.name + ": " + exercise.reps + " reps x " + exercise.sets + " sets\n"
     }
     if (note) description += "\n\nNote: " + note.substring(0, 1).toLowerCase() + note.substring(1);
+    let alert = header + "\n\n" + name + "\n\n" + description;
+    showAlert(alert);
+    return description;
+  }
+
+  _sendCreateAlertMessage(startTime, durationHour, durationMin, name, note) {
+    /**
+     * Send an alert message for "logging" purpose
+     *  about the creation of a new Strava activity.
+     */
+    const header = "CREATE NEW ACTIVITY\n\nStart, duration: " + startTime + " - " + durationHour + ":" + durationMin;
+    let description = "";
+    if (note) description += "Note: " + note.substring(0, 1).toLowerCase() + note.substring(1);
     let alert = header + "\n\n" + name + "\n\n" + description;
     showAlert(alert);
     return description;
@@ -166,18 +203,56 @@ class UpdateStravaButton {
     openUrlInNewBrowserTab("https://www.strava.com/activities/" + activityId, "Opening Strava...");
   }
 
+  _createStravaActivity(startDateString, durationHour, durationMin, description, name) {
+    const durationSeconds = durationMin * 60 + durationHour * 60 * 60;
+    const stravaFacadeApiClient = new StravaFacadeApiClient();
+    const response = stravaFacadeApiClient.createActivity(startDateString, durationSeconds, description, name);
+
+    // Open a new browser tab with the Strava activity.
+    const activityId = response.id;
+    openUrlInNewBrowserTab("https://www.strava.com/activities/" + activityId, "Opening Strava...");
+  }
+
   _askStartTimeAndDuration() {
-    let response = null;
-    try {
-      response = showPrompt("Start time? Duration?", "Eg. 20:00 1:00");
-    } catch (err) {
-      throw err;
-    }
-    // TODO IMPORVE THE PARSING TO MAKE SURE WE GOT INPUT IN THE RIGHT FORMAT!!!! **************************************
+    let response = showPrompt("Start time? Duration?", "Eg. 20:00 1:00");
+
+    // Split start time and duration.
     response = response.split(" ");
-    const startTime = response[0];
-    const duration = response[1];
-    return [startTime, duration];
+    if (!(response[0]) || !(response[1])) {
+      throw new FormatError("Must be in the format: 20:00 1:00");
+    }
+    const startTimeString = response[0];
+    const durationString = response[1];
+
+    // Parse start time.
+    const startTimeTokens = startTimeString.split(":");
+    if (!(startTimeTokens[0]) || !(startTimeTokens[1])) {
+      throw new FormatError("Must be in the format: 20:00 1:00");
+    }
+    const startHour = parseInt(startTimeTokens[0]);
+    const startMin = parseInt(startTimeTokens[1]);
+    if (isNaN(startHour) || startHour < 0 || startHour > 23) {
+      throw new InvalidHour(hour);
+    }
+    if (isNaN(startMin) || startMin < 0 || startMin > 59) {
+      throw new InvalidMinute(startMin);
+    }
+
+    // Parse duration.
+    const durationTokens = durationString.split(":");
+    if (!(durationTokens[0]) || !(durationTokens[1])) {
+      throw new FormatError("Must be in the format: 20:00 1:00");
+    }
+    const durationHour = parseInt(durationTokens[0]);
+    const durationMin = parseInt(durationTokens[1]);
+    if (isNaN(durationHour) || durationHour < 0 || durationHour > 23) {
+      throw new InvalidHour(durationHour);
+    }
+    if (isNaN(durationMin) || durationMin < 0 || durationMin > 59) {
+      throw new InvalidMinute(durationMin);
+    }
+
+    return [startHour, startMin, durationHour, durationMin];
   }
 }
 
@@ -222,6 +297,49 @@ class StravaFacadeApiClient {
     } else if (responseCode === 404) {
       throw new ActivityNotFound();
     } else if (responseCode > 299) {
+      const msg = "Status code: " + responseCode + "\nBody: " + responseBody;
+      showAlert(`** Error response from Lambda strava-facade-api-*! **\n\n${msg}`);
+      throw new ResponseError(msg);
+    }
+    Logger.log("END request to Lambda");
+    return JSON.parse(responseBody);
+  }
+
+  createActivity(startDateString, durationSeconds, description, name) {
+    /**
+     * Post to my strava-facade-api Lambda
+     *  in order to create a new Strava activity.
+     *
+     * Example:
+     *  $ curl -X POST https://q0adsu470c.execute-api.eu-south-1.amazonaws.com/create-activity \
+     *       -H 'Authorization: XXX' \
+     *       -d '{"name": "test1", "activityType": "WeightTraining", "startDate": "2024-07-25T18:17:33.983+02:00" "durationSeconds": 3960, "description": "My new descr"}'
+     */
+    Logger.log("START request to Lambda");
+
+    // Make a POST request with a JSON payload.
+    const data = {
+      "startDate": startDateString,
+      "durationSeconds": durationSeconds,
+      "description": description,
+      "activityType": "WeightTraining",
+      "name": name,
+    };
+    const options = {
+      "method": "post",
+      "contentType": "application/json",
+      "payload": JSON.stringify(data),
+      "headers": {
+        "authorization": STRAVA_FACADE_API_SECRET,
+      },
+      "muteHttpExceptions": true,
+    };
+    const response = UrlFetchApp.fetch(STRAVA_FACADE_API_BASE_URL + "/create-activity", options);
+    const responseBody = response.getContentText();
+    const responseCode = response.getResponseCode();
+    Logger.log(responseBody);
+
+    if (responseCode > 299) {
       const msg = "Status code: " + responseCode + "\nBody: " + responseBody;
       showAlert(`** Error response from Lambda strava-facade-api-*! **\n\n${msg}`);
       throw new ResponseError(msg);
