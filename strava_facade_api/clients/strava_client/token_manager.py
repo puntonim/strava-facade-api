@@ -6,9 +6,9 @@ import requests
 
 from ..aws_parameter_store_client.aws_parameter_store_client import ParameterStoreClient
 
-TOKEN_PARAMETER_STORE_KEY_PATH = "/strava-facade-api/production/token"
-CLIENT_ID_PARAMETER_STORE_KEY_PATH = "/strava-facade-api/production/client-id"
-CLIENT_SECRET_PARAMETER_STORE_KEY_PATH = "/strava-facade-api/production/client-secret"
+TOKEN_JSON_PARAMETER_STORE_KEY_PATH = "/strava-facade-api/production/strava-api-token-json"
+CLIENT_ID_PARAMETER_STORE_KEY_PATH = "/strava-facade-api/production/strava-api-client-id"
+CLIENT_SECRET_PARAMETER_STORE_KEY_PATH = "/strava-facade-api/production/strava-api-client-secret"
 
 
 class TokenManager:
@@ -101,7 +101,7 @@ class TokenManager:
             fout.write(json.dumps(self.token, indent=4))
 
     def _read_token_from_aws_parameter_store(self) -> Optional[dict]:
-        token = ParameterStoreClient().get_secret(TOKEN_PARAMETER_STORE_KEY_PATH)
+        token = ParameterStoreClient().get_secret(TOKEN_JSON_PARAMETER_STORE_KEY_PATH)
         self.token = json.loads(token)
 
         if not self.token.get("access_token"):
@@ -118,7 +118,7 @@ class TokenManager:
 
     def _write_token_to_aws_parameter_store(self) -> None:
         ParameterStoreClient().put_secret(
-            TOKEN_PARAMETER_STORE_KEY_PATH,
+            TOKEN_JSON_PARAMETER_STORE_KEY_PATH,
             json.dumps(self.token, indent=4),
             do_overwrite=True,
         )
