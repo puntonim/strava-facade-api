@@ -103,8 +103,8 @@ class UpdateStravaButton {
     startDate.setHours(startHour, startMin);
     return dateToIsoString(startDate);
   }
-
-  _parseTitle() {
+  
+  _parseTitle() { 
     // Parse data: title.
     const title = this.activeRange.getCell(1, 2).getValue();
     const name = "Weight training: " + title[0].toLowerCase() + title.slice(1);
@@ -133,7 +133,7 @@ class UpdateStravaButton {
         }
         exercises.push({name: name, reps: targetReps, sets: sets});
       }
-    }
+    }    
     return exercises;
   }
 
@@ -152,7 +152,7 @@ class UpdateStravaButton {
       return false;
     }
   }
-
+  
   _sendUpdateAlertMessage(dayStartTs, dayEndTs, name, exercises, note) {
     /**
      * Send an alert message for "logging" purpose
@@ -214,7 +214,12 @@ class UpdateStravaButton {
   }
 
   _askStartTimeAndDuration() {
-    let response = showPrompt("Start time? Duration?", "Eg. 20:00 1:00");
+    let response = showPrompt("Start time? Duration?", "Default (leave blank): 20:00 1:00");
+   
+    // Default.
+    if (response === "") {
+      return [20, 0, 1, 0];
+    }
 
     // Split start time and duration.
     response = response.split(" ");
@@ -252,7 +257,7 @@ class UpdateStravaButton {
       throw new InvalidMinute(durationMin);
     }
 
-    return [startHour, startMin, durationHour, durationMin];
+    return [startHour, startMin, durationHour, durationMin];    
   }
 }
 
@@ -309,7 +314,7 @@ class StravaFacadeApiClient {
     /**
      * Post to my strava-facade-api Lambda
      *  in order to create a new Strava activity.
-     *
+     * 
      * Example:
      *  $ curl -X POST https://q0adsu470c.execute-api.eu-south-1.amazonaws.com/create-activity \
      *       -H 'Authorization: XXX' \
