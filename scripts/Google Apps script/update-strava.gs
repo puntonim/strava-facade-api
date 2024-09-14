@@ -113,7 +113,19 @@ class UpdateStravaButton {
 
   _parseNote() {
     // Parse data: optional note.
-    const note = this.activeRange.getCell(1, 4).getValue() || null;
+    let note;
+    try {
+      note = this.activeRange.getCell(1, 4).getValue() || null;
+    } catch (err) {
+      // If there are less 4 exercises in the workout, then the note is out of the selected
+      //  range. In this case we just try to get the cell outside the selected range.
+      if (err.message.includes("Cell reference out of range")) {
+        const dateCell = this.activeRange.getCell(1, 1);
+        const c = dateCell.getColumn() + 3;
+        const r = dateCell.getRow();
+        note = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange(r, c).getValue() || null;
+      }
+    }
     return note;
   }
 
